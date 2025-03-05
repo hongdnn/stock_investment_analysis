@@ -1,0 +1,124 @@
+---
+title: "Stock investment analysis"
+output: html_document
+date: "2025-02-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 2
+## This is an investment dataset from 2015-2018, provides 25 variables with more than 100,000 observations
+```{r cars}
+library(tidyverse)
+investment <- read_csv("investment_transactions.csv")
+head(investment)
+```
+## 3
+```{r}
+str(investment)
+```
+## 4
+```{r}
+summary(investment)
+```
+### 5
+Binary: investment
+Nominal (Categorical, No Order): company, sector
+Ordinal (Categorical, Has Order): ESG_ranking 
+Discrete: horizon (days), inflation
+Continuous: price_BUY, price_SELL, PE_ratio, EPS_ratio
+
+## 6
+1. Is there a correlation between ESG ranking and return on equity?
+2. How does the volatility of an asset impact its sharpe ratio?
+3. Do investments in the bank sector have higher expected returns than those in retail?
+
+## 7
+## Analyze the relationship between buy and sell price
+```{r}
+ggplot(investment, aes(x = price_BUY, y = price_SELL, colour = sector)) +
+  geom_point() +
+  geom_smooth(method="lm", color = "brown") +
+  labs(
+       x = "Buy Price",
+       y = "Sell Price")
+```
+
+## 8
+## Measure how buy volatility ratio affect the amount of return
+```{r}
+investment <- investment %>%
+  mutate(return_volatility_ratio = nominal_return / Volatility_Buy)
+head(investment)
+```
+
+## 9
+## Compare 2 sectors in term of return on assets ratio
+```{r}
+investment %>%
+  filter(sector %in% c("BANK", "TECH")) %>%
+  ggplot(aes(x = company, y = roa_ratio, colour = sector)) +
+  geom_boxplot() +
+  labs(title = "",
+       x = "Company",
+       y = "Return on Assets Ratio")
+```
+
+## Pearson correlation between buy and sell price
+```{r}
+cor.test(investment$price_BUY, investment$price_SELL)
+```
+
+## Evaluate the net profit percentage of highest-trading-volume sector with lowest one to find out if company's profit lead to buy/sell decision
+```{r}
+filtered_company <- investment %>%
+  filter(sector %in% c("RETAIL", "FMCG"))
+
+# Create the boxplot
+ggplot(filtered_company, aes(x = company, y = NetProfitMargin_ratio, colour = sector)) +
+  geom_boxplot() +
+  scale_y_continuous(
+    breaks = seq(-20, 60, by = 5)
+  ) +
+  labs(title = "Net Profit Ratio of companies in FMCG and Retail industries",
+       x = "Company",
+       y = "Net Profit Ratio")
+
+lr_amount <- lm(amount ~ NetProfitMargin_ratio, data = investment)
+summary(lr_amount)
+```
+
+## Detect which sectors has highest trading volume and which has lowest
+```{r}
+result <- investment %>%
+  group_by(sector) %>%
+  summarize(total_amount = sum(amount))
+```
+
+## Find out which pair of variables has probably high relationship and analyze those 2 variables
+```{r}
+cor(select(investment, Volatility_Buy, Volatility_sell, 
+    `Sharpe Ratio`, `expected_return (yearly)`, inflation, 
+    nominal_return, ESG_ranking, PE_ratio, EPS_ratio, 
+    PS_ratio, PB_ratio, NetProfitMargin_ratio, 
+    current_ratio, roa_ratio, roe_ratio))
+
+investment %>%
+  filter(roe_ratio > 0) %>%
+  ggplot(aes(x = roe_ratio, y = roa_ratio)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(
+       x = "Return on Equity",
+       y = "Return on Assets")
+
+lr <- lm(EPS_ratio ~ NetProfitMargin_ratio, data = investment)
+summary(lr)
+```
+
+## In conclusion, the variables in investment dataset is great for evaluating the development and performance of companies as well as industries. 
+## However, while these variables contribute to investors' decision-making, they don't provide a perfect linear relationship of trading volume, as there are factors besides companies that investors need to consider.
+
